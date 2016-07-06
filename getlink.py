@@ -51,8 +51,8 @@ def startclimb(url, cookie=""):
     log("======================")
     getlink(url, cookie)
 
-
-def getlink(url, cookie, currentDepth=0):
+# 这个 extend 参数是为了将页面的数据拿下来以后,进行后续的扩展
+def getlink(url, cookie, currentDepth = 0,extend = None):
     try:
         if url not in wholeList:
             wholeList.append(url)
@@ -96,6 +96,12 @@ def getlink(url, cookie, currentDepth=0):
             serverCharset = "utf-8"
 
         html = ungzip(response.read()).decode(serverCharset)
+
+        # 这个 extend 是一个接口,所以要有一个 run 方法,将页面上的信息放进去进行加工
+        # 我觉得 牛排大大 的数据分析 和 石大大 的漏洞检测 应该要放在这里吧,个人感觉
+        if extend != None:
+        	extend.run(html)
+
         m = re.findall('<a.+?href="(.+?)"', html, re.DOTALL)
 
         log("%s %s | %s" % (depthPrefix, url, gettitle(html)))
