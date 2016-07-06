@@ -2,6 +2,8 @@
 
 from urllib.request import urlopen
 from urllib.request import Request
+from urllib.request import quote
+import urllib.parse as parse
 import re
 import sys, os
 import gzip
@@ -23,6 +25,22 @@ def ungzip(data):
 
 def log(content):
     print("%s" % content)
+
+
+def encode_uri(uri):
+    result = parse.urlparse(uri)
+    path_tmp = result.path.split('/')
+    for index in range(len(path_tmp)):
+        path_tmp[index] = quote(path_tmp[index])
+    query_tmp = result.query.split('&')
+    for index in range(len(query_tmp)):
+        if query_tmp[index] == '':
+            continue
+        query_parm_tmp = query_tmp[index].split('=')
+        query_tmp[index] = quote(query_parm_tmp[0]) + '=' + quote(query_parm_tmp[1])
+
+    return parse.urlunparse(
+        (result.scheme, result.netloc, '/'.join(path_tmp), result.params, '&'.join(query_tmp), result.fragment))
 
 
 def startclimb(url, cookie=""):
@@ -59,7 +77,7 @@ def getlink(url, cookie, currentDepth=0):
         d = re.findall("(http(?:s|):\/\/.+?)(?:[\/]|$)", url, re.DOTALL)
         domain = d[0]
 
-        req = Request(url)
+        req = Request(encode_uri(url))
         req.add_header("Accept-Encoding", "gzip")
         req.add_header("Connection", "keep-alive")
         req.add_header("Cache-Control", "max-age=0")
