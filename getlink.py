@@ -1,14 +1,25 @@
 #!/usr/bin/env python
 
 from urllib.request import urlopen
+from urllib.request import Request
 import re
 import sys, os
-from urllib.parse import quote
+import gzip
 
 maxDepth = 5  # Max trace depth
 singlePageMaxTrace = 10  # Single page link trace limit
 
 wholeList = []
+
+
+def ungzip(data):
+    try:
+        data = gzip.decompress(data)
+    except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        log("Error at line %s: %s" % (exc_tb.tb_lineno, e))
+    return data
+
 
 def log(content):
     print("%s" % content)
@@ -20,7 +31,7 @@ def startclimb(url, cookie=""):
     log("Start with: %s" % url)
     log("Max depth: %s" % maxDepth)
     log("======================")
-    getlink(url,cookie)
+    getlink(url, cookie)
 
 
 def getlink(url, cookie, currentDepth=0):
@@ -48,23 +59,29 @@ def getlink(url, cookie, currentDepth=0):
         d = re.findall("(http(?:s|):\/\/.+?)(?:[\/]|$)", url, re.DOTALL)
         domain = d[0]
 
-        # response = urlopen(quote(url))
-        response = urlopen(url)
+        req = Request(url)
+        req.add_header("Accept-Encoding", "gzip")
+        req.add_header("Connection", "keep-alive")
+        req.add_header("Cache-Control", "max-age=0")
+        req.add_header("User-Agent",
+                       "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36")
+
+        response = urlopen(req)
         http_message = response.info()
         contentType = http_message.get_content_type()
         if (contentType != "text/html") and (contentType != "text/plain"):
             log("%s %s | %s" % (depthPrefix, url, "Not HTML"))
             return
 
-
         serverCharset = http_message.get_content_charset()
         if serverCharset == None or serverCharset == "":
             serverCharset = "utf-8"
-        html = response.read().decode(serverCharset)
+
+        html = ungzip(response.read()).decode(serverCharset)
         m = re.findall('<a.+?href="(.+?)"', html, re.DOTALL)
 
         log("%s %s | %s" % (depthPrefix, url, gettitle(html)))
-        
+
         if len(m) < 1:
             log("%s No link found to trace" % ("=" + depthPrefix))
         else:
@@ -86,12 +103,16 @@ def getlink(url, cookie, currentDepth=0):
                     log("%s %s | %s" % ("=" + depthPrefix, url + item, "[Dynamic link]"))
                 elif item.startswith("/"):  # start with single "/", we should append domain to head
                     getlink(domain + item, cookie, currentDepth)
+                elif item.startswith("javascript"):  # start with "javascript", we should ignore
+                    log('ignore %s' % item)
+                    continue
                 else:
                     getlink(domain + "/" + item, cookie, currentDepth)
 
     except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info() 
+        exc_type, exc_obj, exc_tb = sys.exc_info()
         log("Error with %s at line %s: %s" % (url, exc_tb.tb_lineno, e))
+
 
 def gettitle(htmlcontent):
     m = re.findall('<title>(.+?)</title>', htmlcontent, re.DOTALL)
@@ -102,5 +123,4 @@ def gettitle(htmlcontent):
 
 
 if __name__ == "__main__":
-    startclimb("http://stackoverflow.com/")
-
+    startclimb("http://www.runoob.com/")
