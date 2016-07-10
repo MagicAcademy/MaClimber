@@ -6,6 +6,7 @@
 * mysql>=5.2
 * [SQLAlchemy](http://www.sqlalchemy.org/)
 * [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
+* [Celery](http://www.celeryproject.org/)
 
 ### 文件夹结构
 ```bash
